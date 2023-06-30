@@ -26,6 +26,9 @@ using CryptoPP::Threefish1024;
 #include "eax.h"
 using CryptoPP::EAX;
 
+#include "secblock.h"
+using CryptoPP::SecByteBlock;
+
 #include <string>
 using std::string;
 
@@ -42,7 +45,7 @@ int main(int argc, char* argv[])
     typedef unsigned char byte;
 
     for (int i = 0; i < argc; i++)
-        cout << argv[i] << endl;
+        cout << argv[i] << " ";
 
     //string plaintext="Encrypted data";
     //string ciphertext, recovered;
@@ -83,18 +86,18 @@ int main(int argc, char* argv[])
         strncat(iv_filename, ".3fish_iv", 10);
 
 
-        byte key[Threefish1024::BLOCKSIZE];
-        memset(key, 0, sizeof(key));
-        byte iv[Threefish1024::BLOCKSIZE];
+        SecByteBlock key(Threefish1024::DEFAULT_KEYLENGTH);
+        memset(key, 0, key.size());
+        CryptoPP::byte iv[Threefish1024::BLOCKSIZE];
         memset(iv, 0, sizeof(iv));
-
+        
         if (mode == 0) {
             ////////////////////////////////////////////////
             // Generate keys
             AutoSeededRandomPool rng;
 
-            rng.GenerateBlock(key, sizeof(key));
-            StringSource(key, sizeof(key), true, new FileSink(k_filename));
+            rng.GenerateBlock(key, key.size());
+            StringSource(key, key.size(), true, new FileSink(k_filename));
 
             rng.GenerateBlock(iv, sizeof(iv));
             StringSource(iv, sizeof(iv), true, new FileSink(iv_filename));
@@ -102,7 +105,7 @@ int main(int argc, char* argv[])
             ////////////////////////////////////////////////
             // Encrpytion
             EAX< Threefish1024 >::Encryption enc;
-            enc.SetKeyWithIV(key, sizeof(key), iv, sizeof(iv));
+            enc.SetKeyWithIV(key, key.size(), iv, sizeof(iv));
 
 
             FileSource(pt, true,
@@ -124,7 +127,7 @@ int main(int argc, char* argv[])
             FileSource(iv_filename, true, new ArraySink(iv, Threefish1024::BLOCKSIZE));
 
             EAX< Threefish1024 >::Decryption dec;
-            dec.SetKeyWithIV(key, sizeof(key), iv, sizeof(iv));
+            dec.SetKeyWithIV(key, key.size(), iv, sizeof(iv));
 
             FileSource(ct, true, new AuthenticatedDecryptionFilter(dec, new FileSink(pt)));
 
@@ -144,6 +147,7 @@ int main(int argc, char* argv[])
     catch (CryptoPP::Exception& e)
     {
         std::cerr << "Error: " << e.what() << endl;
+        return -1;
     }
 
     return 0;
